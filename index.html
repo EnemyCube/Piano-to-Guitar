@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Piano to Guitar Mapper</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Piano to guitar mapper</p>
+          <h1>Find piano notes on the fretboard</h1>
+        </div>
+        <div class="selection-readout" aria-live="polite">
+          <span class="readout-label">Selected</span>
+          <strong id="selected-notes">None</strong>
+        </div>
+      </header>
+
+      <section class="controls" aria-label="Mapping controls">
+        <div class="control-group">
+          <label for="root-note">Root</label>
+          <select id="root-note"></select>
+        </div>
+
+        <div class="control-group">
+          <label for="preset-type">Preset type</label>
+          <select id="preset-type">
+            <option value="manual">Manual</option>
+            <option value="chord">Chord</option>
+            <option value="scale">Scale</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="preset-name">Preset</label>
+          <select id="preset-name" disabled>
+            <option value="">Choose a preset</option>
+          </select>
+        </div>
+
+        <div class="button-row">
+          <button id="clear-selection" type="button">Clear</button>
+          <button id="reset-app" type="button">Reset</button>
+        </div>
+      </section>
+
+      <section class="panel piano-panel" aria-labelledby="piano-title">
+        <div class="panel-title-row">
+          <h2 id="piano-title">Piano Layout</h2>
+        </div>
+        <div class="scroll-frame piano-scroll">
+          <div id="octave-band" class="octave-band" aria-hidden="true"></div>
+          <div id="piano" class="piano" aria-label="Playable piano notes for the selected guitar tuning"></div>
+        </div>
+      </section>
+
+      <section class="controls tuning-controls" aria-label="Guitar tuning controls">
+        <div class="control-group wide">
+          <label for="tuning-preset">Guitar tuning</label>
+          <select id="tuning-preset"></select>
+        </div>
+
+        <div class="control-group">
+          <label for="string-count">Strings</label>
+          <select id="string-count">
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+          </select>
+        </div>
+
+        <div id="custom-tuning" class="custom-tuning" aria-label="Custom string tuning"></div>
+      </section>
+
+      <section class="panel fretboard-panel" aria-labelledby="fretboard-title">
+        <div class="panel-title-row">
+          <h2 id="fretboard-title">Color-Coded Fretboard Layout</h2>
+        </div>
+        <div class="fretboard-wrap">
+          <div id="fretboard" class="fretboard" aria-label="Guitar fretboard"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
