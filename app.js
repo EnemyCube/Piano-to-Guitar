@@ -56,6 +56,7 @@
   ];
 
   var state = {
+    selectedMidis: [],
     selectedPitchClasses: [],
     tuning: TUNINGS[0].notes.map(noteToMidi),
     activeTuningId: TUNINGS[0].id,
@@ -124,12 +125,14 @@
     els.rootNote.addEventListener("change", applyPresetSelection);
 
     els.clearSelection.addEventListener("click", function () {
+      state.selectedMidis = [];
       state.selectedPitchClasses = [];
       setPresetMode("manual");
       renderAll();
     });
 
     els.resetApp.addEventListener("click", function () {
+      state.selectedMidis = [];
       state.selectedPitchClasses = [];
       els.rootNote.value = "0";
       setPresetMode("manual");
@@ -186,6 +189,7 @@
     var source = mode === "chord" ? CHORDS : SCALES;
     var intervals = source[els.presetName.value] || [];
     var root = parseInt(els.rootNote.value, 10);
+    state.selectedMidis = [];
     state.selectedPitchClasses = intervals.map(function (interval) {
       return normalizePitchClass(root + interval);
     });
@@ -218,7 +222,7 @@
       }
       key.innerHTML = '<span class="key-label">' + pitchClassHtml(pc) + '<span class="key-octave">' + octave + "</span></span>";
       key.addEventListener("click", function () {
-        togglePitchClass(parseInt(this.dataset.pc, 10));
+        toggleMidi(parseInt(this.dataset.midi, 10));
       });
       els.piano.appendChild(key);
 
@@ -262,7 +266,7 @@
     header.appendChild(makeHeaderCell("String"));
     header.appendChild(makeHeaderCell("Open"));
     for (var fret = 1; fret <= MAX_FRET; fret += 1) {
-      header.appendChild(makeHeaderCell(String(fret)));
+      header.appendChild(makeHeaderCell(String(fret), fret));
     }
     els.fretboard.appendChild(header);
 
@@ -281,10 +285,16 @@
     });
   }
 
-  function makeHeaderCell(text) {
+  function makeHeaderCell(text, fret) {
     var cell = document.createElement("div");
     cell.className = "fret-head-cell";
-    cell.textContent = text;
+    if (FRET_MARKERS.indexOf(fret) !== -1) {
+      cell.classList.add("has-marker");
+    }
+    if (DOUBLE_MARKERS.indexOf(fret) !== -1) {
+      cell.classList.add("has-marker", "has-double-marker");
+    }
+    cell.innerHTML = '<span class="fret-number">' + text + '</span>';
     return cell;
   }
 
@@ -301,18 +311,12 @@
     var cell = document.createElement("button");
     cell.type = "button";
     cell.className = "fret-cell oct-" + octave + (fret === 0 ? " open" : "");
-    if (FRET_MARKERS.indexOf(fret) !== -1 && isMarkerString(stringNumber)) {
-      cell.classList.add("fret-marker");
-    }
-    if (DOUBLE_MARKERS.indexOf(fret) !== -1 && (stringNumber === 2 || stringNumber === state.tuning.length - 1)) {
-      cell.classList.add("double-marker");
-    }
     cell.dataset.pc = String(pc);
     cell.dataset.midi = String(midi);
     cell.setAttribute("aria-label", fullNoteLabel(midi) + ", fret " + fret + ", string " + stringNumber);
     cell.innerHTML = '<span><span class="note-name">' + pitchClassHtml(pc) + '</span><span class="note-octave">' + octave + "</span></span>";
     cell.addEventListener("click", function () {
-      togglePitchClass(parseInt(this.dataset.pc, 10));
+      toggleMidi(parseInt(this.dataset.midi, 10));
     });
     return cell;
   }
@@ -368,16 +372,30 @@
   }
 
   function renderSelection() {
-    var selected = state.selectedPitchClasses.slice().sort(function (a, b) {
+    var selectedMidis = state.selectedMidis.slice().sort(function (a, b) {
       return a - b;
     });
-    els.selectedNotes.textContent = selected.length ? selected.map(pitchClassLabel).join(", ") : "None";
+    var selectedPitchClasses = state.selectedPitchClasses.slice().sort(function (a, b) {
+      return a - b;
+    });
+    var readout = selectedMidis.length
+      ? selectedMidis.map(fullNoteLabel)
+      : selectedPitchClasses.map(pitchClassLabel);
+    els.selectedNotes.textContent = readout.length ? readout.join(", ") : "None";
 
     document.querySelectorAll("[data-pc]").forEach(function (node) {
       var pc = parseInt(node.dataset.pc, 10);
-      node.classList.toggle("selected", selected.indexOf(pc) !== -1);
+      var midi = parseInt(node.dataset.midi, 10);
+      var exactMatch = selectedMidis.indexOf(midi) !== -1;
+      var pitchMatch = selectedPitchClasses.indexOf(pc) !== -1;
+      var presetMatch = !selectedMidis.length && pitchMatch;
+      var selected = exactMatch || presetMatch;
+      var related = !selected && selectedMidis.length > 0 && pitchMatch;
+
+      node.classList.toggle("selected", selected);
+      node.classList.toggle("related", related);
       if (node.classList.contains("key") || node.classList.contains("fret-cell")) {
-        node.setAttribute("aria-pressed", selected.indexOf(pc) !== -1 ? "true" : "false");
+        node.setAttribute("aria-pressed", selected || related ? "true" : "false");
       }
     });
   }
@@ -441,18 +459,31 @@
     els.app.style.setProperty("--app-top", top + "px");
   }
 
-  function togglePitchClass(pitchClass) {
+  function toggleMidi(midi) {
     if (els.presetType.value !== "manual") {
       setPresetMode("manual");
+      state.selectedMidis = [];
+      state.selectedPitchClasses = [];
     }
 
-    var index = state.selectedPitchClasses.indexOf(pitchClass);
+    var index = state.selectedMidis.indexOf(midi);
     if (index === -1) {
-      state.selectedPitchClasses.push(pitchClass);
+      state.selectedMidis.push(midi);
     } else {
-      state.selectedPitchClasses.splice(index, 1);
+      state.selectedMidis.splice(index, 1);
     }
+    syncPitchClassesFromSelectedMidis();
     renderAll();
+  }
+
+  function syncPitchClassesFromSelectedMidis() {
+    state.selectedPitchClasses = state.selectedMidis.reduce(function (pitchClasses, midi) {
+      var pitchClass = pitchClassFromMidi(midi);
+      if (pitchClasses.indexOf(pitchClass) === -1) {
+        pitchClasses.push(pitchClass);
+      }
+      return pitchClasses;
+    }, []);
   }
 
   function applyTuning(tuning) {
@@ -496,11 +527,6 @@
     return TUNINGS.filter(function (tuning) {
       return tuning.id === id;
     })[0] || TUNINGS[0];
-  }
-
-  function isMarkerString(stringNumber) {
-    var count = state.tuning.length;
-    return stringNumber === Math.ceil(count / 2);
   }
 
   function noteToMidi(note) {
