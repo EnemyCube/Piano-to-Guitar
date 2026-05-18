@@ -9,8 +9,7 @@
   --accent-strong: #0f4d59;
   --select: #ffffff;
   --shadow: 0 18px 45px rgba(31, 29, 24, 0.13);
-  --string-label-w: 82px;
-  --open-cell-w: 48px;
+  --open-string-w: 130px;
   --cell-w: 56px;
   --string-h: 46px;
   --white-key-w: 26px;
@@ -19,7 +18,9 @@
   --app-scale: 1;
   --app-left: 0px;
   --app-top: 0px;
-  font-family: Georgia, "Times New Roman", serif;
+  --font-ui: "Aptos", "Segoe UI Variable", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Aptos Display", "Segoe UI Variable Display", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-ui);
 }
 
 * {
@@ -68,7 +69,7 @@ select {
 .eyebrow {
   margin: 0 0 2px;
   color: var(--accent-strong);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -83,14 +84,18 @@ p {
 
 h1 {
   margin-bottom: 0;
+  font-family: var(--font-display);
   font-size: 2.45rem;
+  font-weight: 800;
   line-height: 0.98;
   letter-spacing: 0;
 }
 
 h2 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 1.45rem;
+  font-weight: 800;
   line-height: 1;
 }
 
@@ -107,7 +112,7 @@ h2 {
   display: block;
   margin-bottom: 3px;
   color: var(--muted);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -143,7 +148,7 @@ h2 {
 
 label {
   color: #4d4942;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -207,7 +212,7 @@ button:focus {
   position: relative;
   display: grid;
   width: max-content;
-  height: 26px;
+  height: 30px;
   border-bottom: 2px solid var(--line);
 }
 
@@ -218,9 +223,9 @@ button:focus {
   min-width: 0;
   border-right: 2px solid rgba(37, 35, 31, 0.48);
   color: rgba(255, 255, 255, 0.92);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 800;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
 }
 
@@ -270,27 +275,21 @@ button:focus {
 .key-label {
   position: absolute;
   right: 2px;
-  bottom: 5px;
+  bottom: 14px;
   left: 2px;
   color: #1d1c19;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.58rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 0.95;
   text-align: center;
+  white-space: normal;
 }
 
 .black .key-label {
-  bottom: 7px;
+  bottom: 12px;
   color: #f5f1e9;
-  font-size: 0.5rem;
-}
-
-.key-octave {
-  display: block;
-  margin-top: 1px;
-  font-weight: 700;
-  opacity: 0.78;
+  font-size: 0.62rem;
 }
 
 .key.middle-c::after {
@@ -305,7 +304,7 @@ button:focus {
   border: 2px solid #233514;
   background: #6f8f3a;
   color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 0.56rem;
   font-weight: 700;
   text-align: center;
@@ -373,7 +372,7 @@ button:focus {
 
 .string-editor span {
   color: #3f3b35;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   font-weight: 700;
 }
@@ -397,7 +396,7 @@ button:focus {
 .fret-row,
 .fret-header {
   display: grid;
-  grid-template-columns: var(--string-label-w) var(--open-cell-w) repeat(24, var(--cell-w));
+  grid-template-columns: var(--open-string-w) repeat(24, var(--cell-w));
   width: max-content;
   min-width: 100%;
 }
@@ -409,7 +408,6 @@ button:focus {
 }
 
 .fret-head-cell,
-.string-label,
 .fret-cell {
   border-right: 2px solid var(--line);
   border-bottom: 2px solid var(--line);
@@ -453,27 +451,9 @@ button:focus {
   line-height: 1;
 }
 
-.fret-header .fret-head-cell:nth-child(2) {
+.fret-header .fret-head-cell:first-child {
   border-right: 7px solid #14120f;
   background: #d8d2c5;
-}
-
-.string-label {
-  display: grid;
-  place-items: center;
-  min-height: var(--string-h);
-  background: #f2eee6;
-  color: #1d1b17;
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: 800;
-}
-
-.string-label small {
-  display: block;
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-align: center;
 }
 
 .fret-cell {
@@ -495,6 +475,16 @@ button:focus {
     inset -5px 0 0 rgba(0, 0, 0, 0.3);
 }
 
+.open-string-label {
+  display: inline-block;
+  margin-right: 4px;
+  font-family: var(--font-ui);
+  font-size: 1em;
+  font-weight: inherit;
+  letter-spacing: 0;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.34);
+}
+
 .fret-cell.open.selected {
   box-shadow:
     inset 0 0 0 4px #111,
@@ -508,21 +498,13 @@ button:focus {
     inset -5px 0 0 rgba(0, 0, 0, 0.3);
 }
 
-.note-name {
+.note-line {
   display: block;
   font-size: 0.78rem;
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 0.98;
+  white-space: normal;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.34);
-}
-
-.note-octave {
-  display: block;
-  margin-top: 2px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
-  opacity: 0.88;
 }
 
 .oct-0,

@@ -51,6 +51,7 @@
     { id: "standard-6", name: "6-string standard", notes: ["E2", "A2", "D3", "G3", "B3", "E4"] },
     { id: "drop-d", name: "Drop D", notes: ["D2", "A2", "D3", "G3", "B3", "E4"] },
     { id: "d-standard", name: "D standard", notes: ["D2", "G2", "C3", "F3", "A3", "D4"] },
+    { id: "open-c", name: "Open C", notes: ["C2", "G2", "C3", "G3", "C4", "E4"] },
     { id: "standard-7", name: "7-string standard", notes: ["B1", "E2", "A2", "D3", "G3", "B3", "E4"] },
     { id: "standard-8", name: "8-string standard", notes: ["F#1", "B1", "E2", "A2", "D3", "G3", "B3", "E4"] }
   ];
@@ -220,7 +221,7 @@
       if (midi === MIDDLE_C) {
         key.classList.add("middle-c");
       }
-      key.innerHTML = '<span class="key-label">' + pitchClassHtml(pc) + '<span class="key-octave">' + octave + "</span></span>";
+      key.innerHTML = '<span class="key-label">' + visualNoteHtml(midi) + "</span>";
       key.addEventListener("click", function () {
         toggleMidi(parseInt(this.dataset.midi, 10));
       });
@@ -263,8 +264,7 @@
 
     var header = document.createElement("div");
     header.className = "fret-header";
-    header.appendChild(makeHeaderCell("String"));
-    header.appendChild(makeHeaderCell("Open"));
+    header.appendChild(makeHeaderCell("Open String"));
     for (var fret = 1; fret <= MAX_FRET; fret += 1) {
       header.appendChild(makeHeaderCell(String(fret), fret));
     }
@@ -275,7 +275,6 @@
       var stringNumber = displayIndex + 1;
       var row = document.createElement("div");
       row.className = "fret-row";
-      row.appendChild(makeStringLabel(stringNumber, openMidi));
 
       for (var fret = 0; fret <= MAX_FRET; fret += 1) {
         var midi = openMidi + fret;
@@ -298,13 +297,6 @@
     return cell;
   }
 
-  function makeStringLabel(stringNumber, midi) {
-    var label = document.createElement("div");
-    label.className = "string-label";
-    label.innerHTML = '<span>String ' + stringNumber + "<small>" + fullNoteLabel(midi) + "</small></span>";
-    return label;
-  }
-
   function makeFretCell(midi, fret, stringNumber) {
     var pc = pitchClassFromMidi(midi);
     var octave = octaveFromMidi(midi);
@@ -314,7 +306,9 @@
     cell.dataset.pc = String(pc);
     cell.dataset.midi = String(midi);
     cell.setAttribute("aria-label", fullNoteLabel(midi) + ", fret " + fret + ", string " + stringNumber);
-    cell.innerHTML = '<span><span class="note-name">' + pitchClassHtml(pc) + '</span><span class="note-octave">' + octave + "</span></span>";
+    cell.innerHTML = fret === 0
+      ? '<span class="note-line"><span class="open-string-label">String ' + stringNumber + " - </span>" + visualNoteHtml(midi) + "</span>"
+      : '<span class="note-line">' + visualNoteHtml(midi) + "</span>";
     cell.addEventListener("click", function () {
       toggleMidi(parseInt(this.dataset.midi, 10));
     });
@@ -325,16 +319,16 @@
     els.customTuning.innerHTML = "";
     els.stringCount.value = String(state.tuning.length);
 
-    state.tuning.slice().reverse().forEach(function (midi, displayIndex) {
-      var internalIndex = state.tuning.length - displayIndex - 1;
+    state.tuning.forEach(function (midi, internalIndex) {
+      var stringNumber = state.tuning.length - internalIndex;
       var editor = document.createElement("div");
       editor.className = "string-editor";
 
       var label = document.createElement("span");
-      label.textContent = "S" + (displayIndex + 1);
+      label.textContent = "S" + stringNumber;
 
       var noteSelect = document.createElement("select");
-      noteSelect.setAttribute("aria-label", "String " + (displayIndex + 1) + " note");
+      noteSelect.setAttribute("aria-label", "String " + stringNumber + " note");
       NOTE_NAMES.forEach(function (note, pitchClass) {
         var option = document.createElement("option");
         option.value = String(pitchClass);
@@ -344,7 +338,7 @@
       noteSelect.value = String(pitchClassFromMidi(midi));
 
       var octaveSelect = document.createElement("select");
-      octaveSelect.setAttribute("aria-label", "String " + (displayIndex + 1) + " octave");
+      octaveSelect.setAttribute("aria-label", "String " + stringNumber + " octave");
       for (var octave = 0; octave <= 5; octave += 1) {
         var option = document.createElement("option");
         option.value = String(octave);
@@ -422,10 +416,9 @@
 
   function getGuitarChartWidth() {
     var styles = getComputedStyle(document.documentElement);
-    var stringLabelWidth = parseFloat(styles.getPropertyValue("--string-label-w")) || 82;
-    var openCellWidth = parseFloat(styles.getPropertyValue("--open-cell-w")) || 48;
+    var openStringWidth = parseFloat(styles.getPropertyValue("--open-string-w")) || 130;
     var fretCellWidth = parseFloat(styles.getPropertyValue("--cell-w")) || 56;
-    return stringLabelWidth + openCellWidth + MAX_FRET * fretCellWidth;
+    return openStringWidth + MAX_FRET * fretCellWidth;
   }
 
   function scheduleFit() {
@@ -561,12 +554,15 @@
     return note.natural ? note.sharp : note.sharp + "/" + note.flat;
   }
 
-  function pitchClassHtml(pitchClass) {
-    var label = pitchClassLabel(pitchClass);
-    return label.replace("/", "<br>");
-  }
-
   function fullNoteLabel(midi) {
     return pitchClassLabel(pitchClassFromMidi(midi)) + octaveFromMidi(midi);
+  }
+
+  function visualNoteLabel(midi) {
+    return pitchClassLabel(pitchClassFromMidi(midi));
+  }
+
+  function visualNoteHtml(midi) {
+    return visualNoteLabel(midi).replace("/", "<br>");
   }
 })();
