@@ -468,6 +468,11 @@ button:focus {
   user-select: none;
 }
 
+.app.has-highlighted-notes .key:not(.selected):not(.related),
+.app.has-highlighted-notes .fret-cell:not(.selected):not(.related) {
+  filter: saturate(0.66) brightness(0.92);
+}
+
 .fret-cell.open {
   border-right: 7px solid #14120f;
   box-shadow:

@@ -376,6 +376,7 @@
       ? selectedMidis.map(fullNoteLabel)
       : selectedPitchClasses.map(pitchClassLabel);
     els.selectedNotes.textContent = readout.length ? readout.join(", ") : "None";
+    els.app.classList.toggle("has-highlighted-notes", readout.length > 0);
 
     document.querySelectorAll("[data-pc]").forEach(function (node) {
       var pc = parseInt(node.dataset.pc, 10);
