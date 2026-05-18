@@ -470,7 +470,7 @@ button:focus {
 
 .app.has-highlighted-notes .key:not(.selected):not(.related),
 .app.has-highlighted-notes .fret-cell:not(.selected):not(.related) {
-  filter: saturate(0.66) brightness(0.92);
+  filter: saturate(0.50) brightness(0.75);
 }
 
 .fret-cell.open {
