@@ -366,6 +366,10 @@
   }
 
   function renderSelection() {
+    var selectionOrder = {};
+    state.selectedMidis.forEach(function (midi, index) {
+      selectionOrder[midi] = index + 1;
+    });
     var selectedMidis = state.selectedMidis.slice().sort(function (a, b) {
       return a - b;
     });
@@ -391,8 +395,29 @@
       node.classList.toggle("related", related);
       if (node.classList.contains("key") || node.classList.contains("fret-cell")) {
         node.setAttribute("aria-pressed", selected || related ? "true" : "false");
+        setSelectionOrderBadge(node, exactMatch ? selectionOrder[midi] : 0);
       }
     });
+  }
+
+  function setSelectionOrderBadge(node, order) {
+    var badge = node.querySelector(".selection-order");
+
+    if (!order) {
+      node.removeAttribute("data-selection-order");
+      if (badge) {
+        badge.remove();
+      }
+      return;
+    }
+
+    node.dataset.selectionOrder = String(order);
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "selection-order";
+      node.appendChild(badge);
+    }
+    badge.textContent = String(order);
   }
 
   function renderAll() {

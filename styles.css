@@ -353,6 +353,38 @@ button:focus {
   z-index: 7;
 }
 
+.selection-order {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  transform: translateX(-50%);
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+.key.black .selection-order {
+  top: 8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 2px;
+  border-width: 1px;
+  font-size: 0.54rem;
+}
+
 .tuning-controls {
   grid-template-columns: 242px 70px 1fr;
 }
@@ -468,6 +500,26 @@ button:focus {
   user-select: none;
 }
 
+.fret-cell .selection-order {
+  top: 50%;
+  right: 4px;
+  bottom: auto;
+  left: auto;
+  transform: translateY(-50%);
+}
+
+.fret-cell.open .selection-order {
+  right: 8px;
+}
+
+.fret-cell[data-selection-order] .note-line {
+  padding-right: 22px;
+}
+
+.fret-cell.open[data-selection-order] .note-line {
+  padding-right: 30px;
+}
+
 .app.has-highlighted-notes .key:not(.selected):not(.related),
 .app.has-highlighted-notes .fret-cell:not(.selected):not(.related) {
   filter: saturate(0.50) brightness(0.75);
@@ -505,9 +557,12 @@ button:focus {
 
 .note-line {
   display: block;
+  width: 100%;
+  padding-left: 4px;
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 0.98;
+  text-align: left;
   white-space: normal;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.34);
 }
