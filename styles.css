@@ -599,3 +599,143 @@ button:focus {
 .oct-7 {
   background: #705588;
 }
+
+.tablature-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.tablature-title-row .button-row {
+  margin-left: auto;
+}
+
+#tab-status,
+.tab-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.tab-help,
+.tab-warning {
+  margin: 8px 12px;
+}
+
+.tab-warning {
+  color: #923b20;
+  font-size: 0.82rem;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tablature-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0 12px 10px;
+}
+
+.tablature-scroll:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.tablature {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: Consolas, "Courier New", monospace;
+  text-align: center;
+}
+
+.tablature th,
+.tablature td {
+  min-width: 42px;
+  height: 23px;
+  padding: 0 6px;
+}
+
+.tablature th {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tablature th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 110px;
+  background: var(--panel);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tablature tbody th {
+  border-right: 3px solid var(--line);
+}
+
+.tablature td {
+  background: linear-gradient(var(--line), var(--line)) center / 100% 1px no-repeat;
+}
+
+.tablature td:last-child {
+  border-right: 2px solid var(--line);
+}
+
+.tab-fret {
+  padding: 0 4px;
+  background: var(--panel);
+  color: var(--accent-strong);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.tablature .tab-unavailable {
+  color: #923b20;
+}
+
+.midi-import-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 10px 12px 6px;
+}
+
+.midi-import-controls .control-group {
+  min-width: 0;
+}
+
+#midi-file {
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+#midi-file::file-selector-button {
+  min-height: 32px;
+  margin-right: 10px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  background: var(--select);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.midi-status {
+  margin: 6px 12px;
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.midi-status.is-error {
+  color: #923b20;
+}

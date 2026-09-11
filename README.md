@@ -15,6 +15,10 @@ Live app: https://enemycube.github.io/Piano-to-Guitar/
 - Note and octave labels on every piano key and fretboard cell.
 - Chord and scale presets for quick pitch-class mapping.
 - Exact-note selection with lighter highlights for the same note in other octaves.
+- Click piano or fretboard notes to build tablature below the fretboard, including repeated notes.
+- Piano clicks choose the lowest available fret; fretboard clicks keep the chosen string and fret.
+- Undo the last note or clear the sequence. Tuning changes remap the same pitches and mark unavailable notes with `?`.
+- Import local MIDI files and add one track or all pitched tracks to the tab.
 - No build step, dependencies, or server required.
 
 ## Use Locally
@@ -43,9 +47,24 @@ Then open `index.html` directly in a browser.
 
 Because the app has no external dependencies, it also works offline after the files are downloaded.
 
+Each click adds one note to the tab in click order; clicking a highlighted note adds it again. The numbered badges show each pitch's latest step. Chord and scale presets only highlight notes; click individual notes to add them to the tab. The tab shows note order, without rhythm notation, with string 1 at the top. When retuning, fretboard notes stay on their chosen string if playable, otherwise they use the lowest available fret.
+
+## Import MIDI
+
+1. Under Tablature, choose a local `.mid` or `.midi` file.
+2. Select **All pitched tracks** or an individual track.
+3. Click **Add to tab** to append the imported notes to your current sequence.
+
+Standard MIDI formats 0 and 1 are supported. Notes are sorted by their start time, keeping repeated notes. Simultaneous notes appear in separate columns, ordered by track and event order. The tab does not show rhythm, durations, rests, or simultaneous chord voicings. Drum hits on MIDI channel 10 are skipped.
+
+Imported notes use the current tuning and lowest available fret. Notes outside its range remain in the sequence with a `?` marker. You can retune, undo notes, clear the tab, or keep clicking to append more notes. Reset also clears the selected MIDI file.
+
+Files are read locally in your browser; no upload or installation is needed. Files up to 5 MB and 10,000 pitched notes are supported. Importing cannot bring the tab above 10,000 notes. Invalid or unsupported files leave your current tab intact.
+
 ## Project Files
 
 - `index.html` - app structure and controls.
 - `styles.css` - chart layout, responsive scaling, and visual styling.
-- `app.js` - note math, tuning logic, selection state, and rendering.
+- `app.js` - note math, tuning logic, selection state, MIDI import controls, and rendering.
+- `midi.js` - local Standard MIDI File parser.
 - `docs/` - README screenshots.

@@ -83,8 +83,39 @@
           <div id="fretboard" class="fretboard" aria-label="Guitar fretboard"></div>
         </div>
       </section>
+      <section class="panel tablature-panel" aria-labelledby="tablature-title">
+        <div class="panel-title-row tablature-title-row">
+          <h2 id="tablature-title">Tablature</h2>
+          <span id="tab-status" role="status">0 notes</span>
+          <div class="button-row">
+            <button id="undo-note" type="button" disabled>Undo last note</button>
+            <button id="clear-tab" type="button" disabled>Clear tab</button>
+          </div>
+        </div>
+        <p id="tab-help" class="tab-help">Click piano or fretboard notes to add them in order. Repeat a click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.</p>
+        <div class="midi-import-controls" role="group" aria-label="Import MIDI" aria-describedby="midi-help">
+          <div class="control-group">
+            <label for="midi-file">MIDI file (.mid / .midi)</label>
+            <input id="midi-file" type="file" accept=".mid,.midi,audio/midi,audio/x-midi">
+          </div>
+          <div class="control-group">
+            <label for="midi-track">Track</label>
+            <select id="midi-track" disabled>
+              <option value="">Choose a MIDI file</option>
+            </select>
+          </div>
+          <button id="import-midi" type="button" disabled>Add to tab</button>
+        </div>
+        <p id="midi-help" class="tab-help">MIDI notes are added in time order. Simultaneous notes appear one after another; drums and rhythm are omitted.</p>
+        <p id="midi-status" class="midi-status" role="status" hidden></p>
+        <div id="tablature-scroll" class="tablature-scroll" tabindex="0" role="region" aria-label="Tablature sequence" aria-describedby="tab-help">
+          <table id="tablature" class="tablature" aria-label="Guitar tablature, string 1 at the top"></table>
+        </div>
+        <p id="tab-warning" class="tab-warning" role="status" hidden></p>
+      </section>
     </main>
 
+    <script src="midi.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

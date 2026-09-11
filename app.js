@@ -57,6 +57,9 @@
   ];
 
   var state = {
+    tabNotes: [],
+    midiImport: null,
+    midiLoadId: 0,
     selectedMidis: [],
     selectedPitchClasses: [],
     tuning: TUNINGS[0].notes.map(noteToMidi),
@@ -92,6 +95,16 @@
     els.stringCount = document.getElementById("string-count");
     els.customTuning = document.getElementById("custom-tuning");
     els.fretboard = document.getElementById("fretboard");
+    els.tablature = document.getElementById("tablature");
+    els.tablatureScroll = document.getElementById("tablature-scroll");
+    els.tabStatus = document.getElementById("tab-status");
+    els.tabWarning = document.getElementById("tab-warning");
+    els.undoNote = document.getElementById("undo-note");
+    els.clearTab = document.getElementById("clear-tab");
+    els.midiFile = document.getElementById("midi-file");
+    els.midiTrack = document.getElementById("midi-track");
+    els.importMidi = document.getElementById("import-midi");
+    els.midiStatus = document.getElementById("midi-status");
   }
 
   function populateRootSelect() {
@@ -125,14 +138,24 @@
     els.presetName.addEventListener("change", applyPresetSelection);
     els.rootNote.addEventListener("change", applyPresetSelection);
 
-    els.clearSelection.addEventListener("click", function () {
-      state.selectedMidis = [];
-      state.selectedPitchClasses = [];
+    els.midiFile.addEventListener("change", loadMidiFile);
+    els.midiTrack.addEventListener("change", updateMidiPreview);
+    els.importMidi.addEventListener("click", importMidiNotes);
+
+    els.clearSelection.addEventListener("click", clearNotes);
+    els.clearTab.addEventListener("click", clearNotes);
+    els.undoNote.addEventListener("click", function () {
+      state.tabNotes.pop();
       setPresetMode("manual");
-      renderAll();
+      syncSelectionFromTab();
+      renderSelection();
+      renderTablature();
+      scheduleFit();
     });
 
     els.resetApp.addEventListener("click", function () {
+      resetMidiImport();
+      state.tabNotes = [];
       state.selectedMidis = [];
       state.selectedPitchClasses = [];
       els.rootNote.value = "0";
@@ -155,6 +178,141 @@
       setStringCount(parseInt(els.stringCount.value, 10));
       renderAll();
     });
+  }
+
+  function setMidiStatus(message, isError) {
+    els.midiStatus.textContent = message;
+    els.midiStatus.hidden = !message;
+    els.midiStatus.classList.toggle("is-error", !!isError);
+    scheduleFit();
+  }
+
+  function resetMidiTracks() {
+    state.midiImport = null;
+    els.midiTrack.replaceChildren();
+    var option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Choose a MIDI file";
+    els.midiTrack.appendChild(option);
+    els.midiTrack.disabled = true;
+    els.importMidi.disabled = true;
+  }
+
+  function resetMidiImport() {
+    state.midiLoadId += 1;
+    els.midiFile.value = "";
+    resetMidiTracks();
+    setMidiStatus("");
+  }
+
+  async function loadMidiFile() {
+    var loadId = ++state.midiLoadId;
+    var file = els.midiFile.files[0];
+    resetMidiTracks();
+    if (!file) {
+      setMidiStatus("");
+      return;
+    }
+    setMidiStatus("Reading " + file.name + "...");
+
+    try {
+      if (file.size > window.MidiImport.maxFileBytes) {
+        throw new Error("This MIDI file is too large. Choose a file smaller than 5 MB.");
+      }
+      var buffer;
+      try {
+        buffer = await file.arrayBuffer();
+      } catch (error) {
+        throw new Error("The file could not be read. Please choose it again.");
+      }
+      // Ignore an old file read if another file was chosen or Reset was clicked.
+      if (loadId !== state.midiLoadId) {
+        return;
+      }
+      var parsed = window.MidiImport.parse(buffer);
+      var tracks = parsed.tracks.filter(function (track) { return track.notes.length > 0; });
+      if (!tracks.length) {
+        throw new Error("This file has no pitched notes to import. Drum hits on MIDI channel 10 are skipped.");
+      }
+
+      state.midiImport = { name: file.name, tracks: tracks, percussionCount: parsed.percussionCount };
+      els.midiTrack.replaceChildren();
+      var allOption = document.createElement("option");
+      allOption.value = "all";
+      allOption.textContent = "All pitched tracks";
+      els.midiTrack.appendChild(allOption);
+      tracks.forEach(function (track) {
+        var option = document.createElement("option");
+        option.value = String(track.index);
+        option.textContent = "Track " + (track.index + 1) + (track.name ? ": " + track.name.slice(0, 100) : "") +
+          " (" + track.notes.length + " notes)";
+        els.midiTrack.appendChild(option);
+      });
+      els.midiTrack.value = "all";
+      els.midiTrack.disabled = false;
+      els.importMidi.disabled = false;
+      updateMidiPreview();
+    } catch (error) {
+      if (loadId !== state.midiLoadId) {
+        return;
+      }
+      els.midiFile.value = "";
+      resetMidiTracks();
+      setMidiStatus(error.message || "This file could not be imported. Choose a valid .mid or .midi file.", true);
+    }
+  }
+
+  function getMidiNotesToImport() {
+    if (!state.midiImport) {
+      return [];
+    }
+    var selection = els.midiTrack.value;
+    var notes = [];
+    state.midiImport.tracks.forEach(function (track) {
+      if (selection !== "all" && String(track.index) !== selection) {
+        return;
+      }
+      track.notes.forEach(function (note) {
+        notes.push({ midi: note.midi, tick: note.tick, track: track.index, order: note.order });
+      });
+    });
+    return notes.sort(function (a, b) {
+      return a.tick - b.tick || a.track - b.track || a.order - b.order;
+    });
+  }
+
+  function updateMidiPreview() {
+    var notes = getMidiNotesToImport();
+    els.importMidi.disabled = !notes.length;
+    if (!state.midiImport) {
+      return;
+    }
+    var skipped = state.midiImport.percussionCount;
+    setMidiStatus(notes.length + (notes.length === 1 ? " note ready" : " notes ready") + " from " +
+      state.midiImport.name + "." + (skipped ? " Drum hits skipped: " + skipped + "." : ""));
+  }
+
+  function importMidiNotes() {
+    var notes = getMidiNotesToImport();
+    if (!notes.length) {
+      return;
+    }
+    if (state.tabNotes.length + notes.length > window.MidiImport.maxNotes) {
+      setMidiStatus("This would exceed the " + window.MidiImport.maxNotes + "-note import limit. Choose a smaller track or clear the tab first.", true);
+      return;
+    }
+    var imported = notes.map(function (note) {
+      return { midi: note.midi, preferredString: null };
+    });
+    var hadNotes = state.tabNotes.length > 0;
+    state.tabNotes = state.tabNotes.concat(imported);
+    setPresetMode("manual");
+    syncSelectionFromTab();
+    renderSelection();
+    renderTablature();
+    els.tablatureScroll.scrollLeft = hadNotes ? els.tablatureScroll.scrollWidth : 0;
+    setMidiStatus("Added " + imported.length + (imported.length === 1 ? " note" : " notes") +
+      " from " + state.midiImport.name + ". You can keep adding notes or use Undo last note.");
   }
 
   function setPresetMode(mode) {
@@ -183,6 +341,7 @@
   function applyPresetSelection() {
     var mode = els.presetType.value;
     if (mode === "manual") {
+      syncSelectionFromTab();
       renderAll();
       return;
     }
@@ -223,7 +382,7 @@
       }
       key.innerHTML = '<span class="key-label">' + visualNoteHtml(midi) + "</span>";
       key.addEventListener("click", function () {
-        toggleMidi(parseInt(this.dataset.midi, 10));
+        appendNote(parseInt(this.dataset.midi, 10));
       });
       els.piano.appendChild(key);
 
@@ -310,7 +469,7 @@
       ? '<span class="note-line"><span class="open-string-label">String ' + stringNumber + " - </span>" + visualNoteHtml(midi) + "</span>"
       : '<span class="note-line">' + visualNoteHtml(midi) + "</span>";
     cell.addEventListener("click", function () {
-      toggleMidi(parseInt(this.dataset.midi, 10));
+      appendNote(midi, stringNumber);
     });
     return cell;
   }
@@ -367,8 +526,8 @@
 
   function renderSelection() {
     var selectionOrder = {};
-    state.selectedMidis.forEach(function (midi, index) {
-      selectionOrder[midi] = index + 1;
+    state.tabNotes.forEach(function (note, index) {
+      selectionOrder[note.midi] = index + 1;
     });
     var selectedMidis = state.selectedMidis.slice().sort(function (a, b) {
       return a - b;
@@ -394,7 +553,6 @@
       node.classList.toggle("selected", selected);
       node.classList.toggle("related", related);
       if (node.classList.contains("key") || node.classList.contains("fret-cell")) {
-        node.setAttribute("aria-pressed", selected || related ? "true" : "false");
         setSelectionOrderBadge(node, exactMatch ? selectionOrder[midi] : 0);
       }
     });
@@ -425,6 +583,7 @@
     buildPiano();
     renderFretboard();
     renderSelection();
+    renderTablature();
     scheduleFit();
   }
 
@@ -478,24 +637,36 @@
     els.app.style.setProperty("--app-top", top + "px");
   }
 
-  function toggleMidi(midi) {
+  function appendNote(midi, stringNumber) {
     if (els.presetType.value !== "manual") {
       setPresetMode("manual");
-      state.selectedMidis = [];
-      state.selectedPitchClasses = [];
     }
 
-    var index = state.selectedMidis.indexOf(midi);
-    if (index === -1) {
-      state.selectedMidis.push(midi);
-    } else {
-      state.selectedMidis.splice(index, 1);
-    }
-    syncPitchClassesFromSelectedMidis();
-    renderAll();
+    state.tabNotes.push({ midi: midi, preferredString: stringNumber || null });
+    syncSelectionFromTab();
+    // Keep note buttons in place so repeated clicks and keyboard focus work.
+    renderSelection();
+    renderTablature();
+    els.tablatureScroll.scrollLeft = els.tablatureScroll.scrollWidth;
+    scheduleFit();
   }
 
-  function syncPitchClassesFromSelectedMidis() {
+  function clearNotes() {
+    state.tabNotes = [];
+    setPresetMode("manual");
+    syncSelectionFromTab();
+    renderSelection();
+    renderTablature();
+    scheduleFit();
+  }
+
+  function syncSelectionFromTab() {
+    state.selectedMidis = state.tabNotes.reduce(function (midis, note) {
+      if (midis.indexOf(note.midi) === -1) {
+        midis.push(note.midi);
+      }
+      return midis;
+    }, []);
     state.selectedPitchClasses = state.selectedMidis.reduce(function (pitchClasses, midi) {
       var pitchClass = pitchClassFromMidi(midi);
       if (pitchClasses.indexOf(pitchClass) === -1) {
@@ -503,6 +674,88 @@
       }
       return pitchClasses;
     }, []);
+  }
+
+  function getTabPosition(note) {
+    var best = null;
+    for (var stringNumber = 1; stringNumber <= state.tuning.length; stringNumber += 1) {
+      var fret = note.midi - state.tuning[state.tuning.length - stringNumber];
+      if (fret < 0 || fret > MAX_FRET) {
+        continue;
+      }
+      var position = { stringNumber: stringNumber, fret: fret };
+      if (stringNumber === note.preferredString) {
+        return position;
+      }
+      if (!best || fret < best.fret) {
+        best = position;
+      }
+    }
+    return best;
+  }
+
+  function renderTablature() {
+    var positions = state.tabNotes.map(getTabPosition);
+    var columnCount = Math.max(state.tabNotes.length, 16);
+    var head = document.createElement("thead");
+    var header = document.createElement("tr");
+    var corner = document.createElement("th");
+    corner.scope = "col";
+    corner.textContent = "String";
+    header.appendChild(corner);
+
+    for (var index = 0; index < columnCount; index += 1) {
+      var step = document.createElement("th");
+      step.scope = "col";
+      step.textContent = index < state.tabNotes.length ? String(index + 1) : "";
+      if (index < state.tabNotes.length) {
+        var label = "Note " + (index + 1) + ": " + fullNoteLabel(state.tabNotes[index].midi);
+        if (!positions[index]) {
+          label += ", unavailable in this tuning";
+          step.textContent += " ?";
+          step.className = "tab-unavailable";
+        }
+        step.setAttribute("aria-label", label);
+        step.title = label;
+      }
+      header.appendChild(step);
+    }
+    head.appendChild(header);
+
+    var body = document.createElement("tbody");
+    state.tuning.slice().reverse().forEach(function (openMidi, displayIndex) {
+      var stringNumber = displayIndex + 1;
+      var row = document.createElement("tr");
+      var label = document.createElement("th");
+      label.scope = "row";
+      label.textContent = "S" + stringNumber + " " + fullNoteLabel(openMidi);
+      row.appendChild(label);
+
+      for (var index = 0; index < columnCount; index += 1) {
+        var cell = document.createElement("td");
+        var position = positions[index];
+        if (position && position.stringNumber === stringNumber) {
+          var number = document.createElement("span");
+          number.className = "tab-fret";
+          number.textContent = String(position.fret);
+          cell.appendChild(number);
+          cell.setAttribute("aria-label", fullNoteLabel(state.tabNotes[index].midi) + ", string " + stringNumber + ", fret " + position.fret);
+        }
+        row.appendChild(cell);
+      }
+      body.appendChild(row);
+    });
+
+    els.tablature.replaceChildren(head, body);
+    var count = state.tabNotes.length;
+    els.tabStatus.textContent = count + (count === 1 ? " note" : " notes");
+    els.undoNote.disabled = count === 0;
+    els.clearTab.disabled = count === 0;
+    var unavailableCount = positions.filter(function (position) { return !position; }).length;
+    els.tabWarning.hidden = unavailableCount === 0;
+    els.tabWarning.textContent = unavailableCount
+      ? unavailableCount + (unavailableCount === 1 ? " note is" : " notes are") + " outside this tuning's fret range. Columns marked ? keep their place; change the tuning to map them."
+      : "";
   }
 
   function applyTuning(tuning) {
