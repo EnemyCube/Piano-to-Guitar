@@ -14,12 +14,12 @@
           <h1>Piano to Guitar Mapper</h1>
         </div>
         <div class="selection-readout" aria-live="polite">
-          <span class="readout-label">Selected</span>
+          <span id="selection-label" class="readout-label">Selected - Regular notes</span>
           <strong id="selected-notes">None</strong>
         </div>
       </header>
 
-      <section class="controls" aria-label="Mapping controls">
+      <section class="controls mapping-controls" aria-label="Mapping controls">
         <div class="control-group">
           <label for="root-note">Root</label>
           <select id="root-note"></select>
@@ -41,10 +41,18 @@
           </select>
         </div>
 
+        <div class="control-group">
+          <label for="harmony-preset">Harmony</label>
+          <select id="harmony-preset" aria-describedby="harmony-help"></select>
+        </div>
+
+        <button id="toggle-harmony" type="button" aria-pressed="false" aria-controls="piano fretboard tablature" aria-describedby="harmony-help" disabled>Show harmonized notes</button>
+
         <div class="button-row">
           <button id="clear-selection" type="button">Clear</button>
           <button id="reset-app" type="button">Reset</button>
         </div>
+        <p id="harmony-help" class="harmony-help">Choose notes, then show harmonies. Harmonized mode shows only the generated notes above your originals. Switch back to see the original notes anytime.</p>
       </section>
 
       <section class="panel piano-panel" aria-labelledby="piano-title">
@@ -116,6 +124,7 @@
     </main>
 
     <script src="midi.js"></script>
+    <script src="harmony.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

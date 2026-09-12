@@ -739,3 +739,23 @@ button:disabled {
 .midi-status.is-error {
   color: #923b20;
 }
+
+.mapping-controls {
+  grid-template-columns: 130px 150px minmax(180px, 1fr) minmax(210px, 1fr) auto auto;
+}
+
+.harmony-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+#toggle-harmony {
+  min-width: 210px;
+}
+
+#toggle-harmony[aria-pressed="true"] {
+  background: var(--accent-strong);
+  color: #fff;
+}

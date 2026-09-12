@@ -58,6 +58,8 @@
 
   var state = {
     tabNotes: [],
+    harmonyPreset: "major-third",
+    harmonized: false,
     midiImport: null,
     midiLoadId: 0,
     selectedMidis: [],
@@ -72,6 +74,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     cacheElements();
     populateRootSelect();
+    populateHarmonySelect();
     populateTuningPresetSelect();
     bindControls();
     applyTuning(TUNINGS[0]);
@@ -88,6 +91,10 @@
     els.clearSelection = document.getElementById("clear-selection");
     els.resetApp = document.getElementById("reset-app");
     els.selectedNotes = document.getElementById("selected-notes");
+    els.selectionLabel = document.getElementById("selection-label");
+    els.harmonyPreset = document.getElementById("harmony-preset");
+    els.toggleHarmony = document.getElementById("toggle-harmony");
+    els.tabHelp = document.getElementById("tab-help");
     els.pianoTitle = document.getElementById("piano-title");
     els.octaveBand = document.getElementById("octave-band");
     els.piano = document.getElementById("piano");
@@ -116,6 +123,16 @@
     });
   }
 
+  function populateHarmonySelect() {
+    window.Harmony.presets.forEach(function (preset) {
+      var option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = preset.name;
+      els.harmonyPreset.appendChild(option);
+    });
+    els.harmonyPreset.value = state.harmonyPreset;
+  }
+
   function populateTuningPresetSelect() {
     TUNINGS.forEach(function (tuning) {
       var option = document.createElement("option");
@@ -138,6 +155,19 @@
     els.presetName.addEventListener("change", applyPresetSelection);
     els.rootNote.addEventListener("change", applyPresetSelection);
 
+    els.harmonyPreset.addEventListener("change", function () {
+      state.harmonyPreset = els.harmonyPreset.value;
+      renderSelection();
+      renderTablature();
+      scheduleFit();
+    });
+    els.toggleHarmony.addEventListener("click", function () {
+      state.harmonized = !state.harmonized;
+      renderSelection();
+      renderTablature();
+      scheduleFit();
+    });
+
     els.midiFile.addEventListener("change", loadMidiFile);
     els.midiTrack.addEventListener("change", updateMidiPreview);
     els.importMidi.addEventListener("click", importMidiNotes);
@@ -155,6 +185,9 @@
 
     els.resetApp.addEventListener("click", function () {
       resetMidiImport();
+      state.harmonized = false;
+      state.harmonyPreset = "major-third";
+      els.harmonyPreset.value = state.harmonyPreset;
       state.tabNotes = [];
       state.selectedMidis = [];
       state.selectedPitchClasses = [];
@@ -524,17 +557,42 @@
     });
   }
 
+  // Show only the added voices in harmony mode; keep the original sequence intact.
+  function getDisplayNotes(note) {
+    return state.harmonized ? window.Harmony.notesFor(note, state.harmonyPreset).slice(1) : [note];
+  }
+
+  function getDisplaySelection(values, pitchClassesOnly) {
+    var selected = new Set();
+    values.forEach(function (value) {
+      getDisplayNotes({ midi: value, preferredString: null }).forEach(function (note) {
+        selected.add(pitchClassesOnly ? pitchClassFromMidi(note.midi) : note.midi);
+      });
+    });
+    return Array.from(selected).sort(function (a, b) { return a - b; });
+  }
+
+  function renderHarmonyControls() {
+    var hasNotes = state.selectedMidis.length || state.selectedPitchClasses.length || state.tabNotes.length;
+    els.toggleHarmony.disabled = !hasNotes && !state.harmonized;
+    els.toggleHarmony.setAttribute("aria-pressed", String(state.harmonized));
+    els.toggleHarmony.textContent = state.harmonized ? "Show regular notes" : "Show harmonized notes";
+    els.selectionLabel.textContent = state.harmonized ? "Selected - Harmony notes only" : "Selected - Regular notes";
+    els.tabHelp.textContent = state.harmonized
+      ? "Only generated harmony notes are shown. Each column keeps its original step, with harmony voices on separate strings. Clicks and Undo edit the original sequence; show regular notes to see it again."
+      : "Click piano or fretboard notes to add them in order. Repeat a click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.";
+  }
+
   function renderSelection() {
+    renderHarmonyControls();
     var selectionOrder = {};
     state.tabNotes.forEach(function (note, index) {
-      selectionOrder[note.midi] = index + 1;
+      getDisplayNotes(note).forEach(function (voice) {
+        selectionOrder[voice.midi] = index + 1;
+      });
     });
-    var selectedMidis = state.selectedMidis.slice().sort(function (a, b) {
-      return a - b;
-    });
-    var selectedPitchClasses = state.selectedPitchClasses.slice().sort(function (a, b) {
-      return a - b;
-    });
+    var selectedMidis = getDisplaySelection(state.selectedMidis, false);
+    var selectedPitchClasses = getDisplaySelection(state.selectedPitchClasses, true);
     var readout = selectedMidis.length
       ? selectedMidis.map(fullNoteLabel)
       : selectedPitchClasses.map(pitchClassLabel);
@@ -548,7 +606,8 @@
       var pitchMatch = selectedPitchClasses.indexOf(pc) !== -1;
       var presetMatch = !selectedMidis.length && pitchMatch;
       var selected = exactMatch || presetMatch;
-      var related = !selected && selectedMidis.length > 0 && pitchMatch;
+      // Exact harmony voices only: an octave harmony must not relight the original note.
+      var related = !state.harmonized && !selected && selectedMidis.length > 0 && pitchMatch;
 
       node.classList.toggle("selected", selected);
       node.classList.toggle("related", related);
@@ -653,6 +712,7 @@
 
   function clearNotes() {
     state.tabNotes = [];
+    state.harmonized = false;
     setPresetMode("manual");
     syncSelectionFromTab();
     renderSelection();
@@ -695,23 +755,46 @@
   }
 
   function renderTablature() {
-    var positions = state.tabNotes.map(getTabPosition);
-    var columnCount = Math.max(state.tabNotes.length, 16);
+    var steps = state.tabNotes.map(getDisplayNotes);
+    // MIDI sequences often repeat the same pitches. Map each distinct voicing once.
+    var positionCache = new Map();
+    var positions = steps.map(function (notes) {
+      if (!state.harmonized) {
+        return [getTabPosition(notes[0])];
+      }
+      var key = notes[0].midi + ":" + (notes[0].preferredString || "");
+      if (!positionCache.has(key)) {
+        positionCache.set(key, window.Harmony.mapPositions(notes, state.tuning, MAX_FRET));
+      }
+      return positionCache.get(key);
+    });
+    var columnCount = Math.max(steps.length, 16);
     var head = document.createElement("thead");
     var header = document.createElement("tr");
     var corner = document.createElement("th");
     corner.scope = "col";
     corner.textContent = "String";
     header.appendChild(corner);
+    var unavailableCount = 0;
+    var noteCount = 0;
 
     for (var index = 0; index < columnCount; index += 1) {
       var step = document.createElement("th");
       step.scope = "col";
-      step.textContent = index < state.tabNotes.length ? String(index + 1) : "";
-      if (index < state.tabNotes.length) {
-        var label = "Note " + (index + 1) + ": " + fullNoteLabel(state.tabNotes[index].midi);
-        if (!positions[index]) {
-          label += ", unavailable in this tuning";
+      step.textContent = index < steps.length ? String(index + 1) : "";
+      if (index < steps.length) {
+        var notes = steps[index];
+        noteCount += notes.length;
+        var unavailable = notes.filter(function (note, voiceIndex) {
+          return !positions[index][voiceIndex];
+        });
+        unavailableCount += unavailable.length;
+        var label = (state.harmonized ? "Step " : "Note ") + (index + 1) + ": " +
+          notes.map(function (note) { return fullNoteLabel(note.midi); }).join(" + ");
+        if (unavailable.length) {
+          label += "; unavailable: " + unavailable.map(function (note) {
+            return fullNoteLabel(note.midi);
+          }).join(", ") + (state.harmonized ? " (needs a separate string within frets 0-24)" : " in this tuning");
           step.textContent += " ?";
           step.className = "tab-unavailable";
         }
@@ -733,13 +816,18 @@
 
       for (var index = 0; index < columnCount; index += 1) {
         var cell = document.createElement("td");
-        var position = positions[index];
-        if (position && position.stringNumber === stringNumber) {
-          var number = document.createElement("span");
-          number.className = "tab-fret";
-          number.textContent = String(position.fret);
-          cell.appendChild(number);
-          cell.setAttribute("aria-label", fullNoteLabel(state.tabNotes[index].midi) + ", string " + stringNumber + ", fret " + position.fret);
+        if (index < steps.length) {
+          positions[index].forEach(function (position, voiceIndex) {
+            if (!position || position.stringNumber !== stringNumber) {
+              return;
+            }
+            var number = document.createElement("span");
+            number.className = "tab-fret";
+            number.textContent = String(position.fret);
+            cell.appendChild(number);
+            cell.setAttribute("aria-label", fullNoteLabel(steps[index][voiceIndex].midi) +
+              ", string " + stringNumber + ", fret " + position.fret);
+          });
         }
         row.appendChild(cell);
       }
@@ -748,13 +836,17 @@
 
     els.tablature.replaceChildren(head, body);
     var count = state.tabNotes.length;
-    els.tabStatus.textContent = count + (count === 1 ? " note" : " notes");
+    els.tabStatus.textContent = state.harmonized
+      ? count + (count === 1 ? " step" : " steps") + " / " + noteCount + (noteCount === 1 ? " note" : " notes") + " (harmony only)"
+      : count + (count === 1 ? " note" : " notes");
     els.undoNote.disabled = count === 0;
     els.clearTab.disabled = count === 0;
-    var unavailableCount = positions.filter(function (position) { return !position; }).length;
     els.tabWarning.hidden = unavailableCount === 0;
     els.tabWarning.textContent = unavailableCount
-      ? unavailableCount + (unavailableCount === 1 ? " note is" : " notes are") + " outside this tuning's fret range. Columns marked ? keep their place; change the tuning to map them."
+      ? unavailableCount + (unavailableCount === 1 ? " note cannot" : " notes cannot") +
+        (state.harmonized
+          ? " fit on separate strings within this tuning's fret range. Columns marked ? identify the missing pitches. Try a different harmony or tuning, or show regular notes."
+          : " fit within this tuning's fret range. Columns marked ? keep their place; change the tuning to map them.")
       : "";
   }
 
