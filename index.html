@@ -13,6 +13,10 @@
           <p class="eyebrow">Find piano notes on the fretboard</p>
           <h1>Piano to Guitar Mapper</h1>
         </div>
+        <div class="global-actions" role="group" aria-label="Global actions">
+          <button id="undo-note" type="button" title="Undo the last added note" disabled><span aria-hidden="true">&#8630;</span> Undo</button>
+          <button id="reset-app" type="button" title="Reset notes, tuning, presets, and MIDI import"><span aria-hidden="true">&#8634;</span> Reset</button>
+        </div>
         <div class="selection-readout" aria-live="polite">
           <span id="selection-label" class="readout-label">Selected - Regular notes</span>
           <strong id="selected-notes">None</strong>
@@ -43,21 +47,24 @@
 
         <div class="control-group">
           <label for="harmony-preset">Harmony</label>
-          <select id="harmony-preset" aria-describedby="harmony-help"></select>
+          <select id="harmony-preset"></select>
         </div>
 
-        <button id="toggle-harmony" type="button" aria-pressed="false" aria-controls="piano fretboard tablature" aria-describedby="harmony-help" disabled>Show harmonized notes</button>
+        <button id="toggle-harmony" type="button" aria-pressed="false" aria-controls="piano fretboard tablature" disabled>Show harmonized notes</button>
 
-        <div class="button-row">
-          <button id="clear-selection" type="button">Clear</button>
-          <button id="reset-app" type="button">Reset</button>
-        </div>
-        <p id="harmony-help" class="harmony-help">Choose notes, then show harmonies. Harmonized mode shows only the generated notes above your originals. Switch back to see the original notes anytime.</p>
       </section>
 
+      <div id="view-mode" class="view-mode" role="status" aria-live="polite">
+        <div class="view-mode-heading">
+          <strong id="view-mode-title">Regular view</strong>
+          <span id="view-mode-preset" class="view-mode-preset" hidden></span>
+        </div>
+        <span class="note-click-hint"><kbd>Shift</kbd> + click to add another note, including repeats.</span>
+      </div>
       <section class="panel piano-panel" aria-labelledby="piano-title">
         <div class="panel-title-row">
           <h2 id="piano-title">Piano Layout</h2>
+          <span class="harmony-mode-badge">Harmony only</span>
         </div>
         <div class="scroll-frame piano-scroll">
           <div id="octave-band" class="octave-band" aria-hidden="true"></div>
@@ -86,6 +93,7 @@
       <section class="panel fretboard-panel" aria-labelledby="fretboard-title">
         <div class="panel-title-row">
           <h2 id="fretboard-title">Color-Coded Fretboard Layout</h2>
+          <span class="harmony-mode-badge">Harmony only</span>
         </div>
         <div class="fretboard-wrap">
           <div id="fretboard" class="fretboard" aria-label="Guitar fretboard"></div>
@@ -94,14 +102,10 @@
       <section class="panel tablature-panel" aria-labelledby="tablature-title">
         <div class="panel-title-row tablature-title-row">
           <h2 id="tablature-title">Tablature</h2>
-          <span id="tab-status" role="status">0 notes</span>
-          <div class="button-row">
-            <button id="undo-note" type="button" disabled>Undo last note</button>
-            <button id="clear-tab" type="button" disabled>Clear tab</button>
-          </div>
+          <span class="harmony-mode-badge">Harmony only</span>
         </div>
-        <p id="tab-help" class="tab-help">Click piano or fretboard notes to add them in order. Repeat a click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.</p>
-        <div class="midi-import-controls" role="group" aria-label="Import MIDI" aria-describedby="midi-help">
+        <p id="tab-help" class="tab-help">Click a note to add it; click a selected pitch to remove its latest occurrence. Shift-click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.</p>
+        <div class="midi-import-controls" role="group" aria-label="Import MIDI">
           <div class="control-group">
             <label for="midi-file">MIDI file (.mid / .midi)</label>
             <input id="midi-file" type="file" accept=".mid,.midi,audio/midi,audio/x-midi">
@@ -114,7 +118,6 @@
           </div>
           <button id="import-midi" type="button" disabled>Add to tab</button>
         </div>
-        <p id="midi-help" class="tab-help">MIDI notes are added in time order. Simultaneous notes appear one after another; drums and rhythm are omitted.</p>
         <p id="midi-status" class="midi-status" role="status" hidden></p>
         <div id="tablature-scroll" class="tablature-scroll" tabindex="0" role="region" aria-label="Tablature sequence" aria-describedby="tab-help">
           <table id="tablature" class="tablature" aria-label="Guitar tablature, string 1 at the top"></table>

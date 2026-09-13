@@ -88,10 +88,11 @@
     els.rootNote = document.getElementById("root-note");
     els.presetType = document.getElementById("preset-type");
     els.presetName = document.getElementById("preset-name");
-    els.clearSelection = document.getElementById("clear-selection");
     els.resetApp = document.getElementById("reset-app");
     els.selectedNotes = document.getElementById("selected-notes");
     els.selectionLabel = document.getElementById("selection-label");
+    els.viewModeTitle = document.getElementById("view-mode-title");
+    els.viewModePreset = document.getElementById("view-mode-preset");
     els.harmonyPreset = document.getElementById("harmony-preset");
     els.toggleHarmony = document.getElementById("toggle-harmony");
     els.tabHelp = document.getElementById("tab-help");
@@ -104,10 +105,8 @@
     els.fretboard = document.getElementById("fretboard");
     els.tablature = document.getElementById("tablature");
     els.tablatureScroll = document.getElementById("tablature-scroll");
-    els.tabStatus = document.getElementById("tab-status");
     els.tabWarning = document.getElementById("tab-warning");
     els.undoNote = document.getElementById("undo-note");
-    els.clearTab = document.getElementById("clear-tab");
     els.midiFile = document.getElementById("midi-file");
     els.midiTrack = document.getElementById("midi-track");
     els.importMidi = document.getElementById("import-midi");
@@ -172,8 +171,6 @@
     els.midiTrack.addEventListener("change", updateMidiPreview);
     els.importMidi.addEventListener("click", importMidiNotes);
 
-    els.clearSelection.addEventListener("click", clearNotes);
-    els.clearTab.addEventListener("click", clearNotes);
     els.undoNote.addEventListener("click", function () {
       state.tabNotes.pop();
       setPresetMode("manual");
@@ -414,8 +411,8 @@
         key.classList.add("middle-c");
       }
       key.innerHTML = '<span class="key-label">' + visualNoteHtml(midi) + "</span>";
-      key.addEventListener("click", function () {
-        appendNote(parseInt(this.dataset.midi, 10));
+      key.addEventListener("click", function (event) {
+        toggleNote(parseInt(this.dataset.midi, 10), null, event.shiftKey);
       });
       els.piano.appendChild(key);
 
@@ -501,8 +498,8 @@
     cell.innerHTML = fret === 0
       ? '<span class="note-line"><span class="open-string-label">String ' + stringNumber + " - </span>" + visualNoteHtml(midi) + "</span>"
       : '<span class="note-line">' + visualNoteHtml(midi) + "</span>";
-    cell.addEventListener("click", function () {
-      appendNote(midi, stringNumber);
+    cell.addEventListener("click", function (event) {
+      toggleNote(midi, stringNumber, event.shiftKey);
     });
     return cell;
   }
@@ -573,14 +570,19 @@
   }
 
   function renderHarmonyControls() {
+    var preset = window.Harmony.presets.find(function (item) { return item.id === state.harmonyPreset; });
+    els.app.classList.toggle("is-harmonized", state.harmonized);
+    els.viewModeTitle.textContent = state.harmonized ? "Harmonized view" : "Regular view";
+    els.viewModePreset.hidden = !state.harmonized;
+    els.viewModePreset.textContent = state.harmonized && preset ? preset.name : "";
     var hasNotes = state.selectedMidis.length || state.selectedPitchClasses.length || state.tabNotes.length;
     els.toggleHarmony.disabled = !hasNotes && !state.harmonized;
     els.toggleHarmony.setAttribute("aria-pressed", String(state.harmonized));
     els.toggleHarmony.textContent = state.harmonized ? "Show regular notes" : "Show harmonized notes";
     els.selectionLabel.textContent = state.harmonized ? "Selected - Harmony notes only" : "Selected - Regular notes";
     els.tabHelp.textContent = state.harmonized
-      ? "Only generated harmony notes are shown. Each column keeps its original step, with harmony voices on separate strings. Clicks and Undo edit the original sequence; show regular notes to see it again."
-      : "Click piano or fretboard notes to add them in order. Repeat a click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.";
+      ? "Harmony notes only. Click a highlighted harmony to remove its latest original step and all its voices. Shift-click adds the clicked pitch as a new original note. Undo removes the last original step."
+      : "Click a note to add it; click a selected pitch to remove its latest occurrence. Shift-click to repeat a note. Piano notes use the lowest available fret; fretboard clicks use that exact position.";
   }
 
   function renderSelection() {
@@ -696,27 +698,33 @@
     els.app.style.setProperty("--app-top", top + "px");
   }
 
-  function appendNote(midi, stringNumber) {
+  function toggleNote(midi, stringNumber, repeat) {
     if (els.presetType.value !== "manual") {
       setPresetMode("manual");
     }
 
-    state.tabNotes.push({ midi: midi, preferredString: stringNumber || null });
+    var matchIndex = -1;
+    if (!repeat) {
+      // Match the visible pitch, including generated harmony voices, newest first.
+      for (var index = state.tabNotes.length - 1; index >= 0; index -= 1) {
+        if (getDisplayNotes(state.tabNotes[index]).some(function (note) { return note.midi === midi; })) {
+          matchIndex = index;
+          break;
+        }
+      }
+    }
+    if (matchIndex === -1) {
+      state.tabNotes.push({ midi: midi, preferredString: stringNumber || null });
+    } else {
+      state.tabNotes.splice(matchIndex, 1);
+    }
     syncSelectionFromTab();
     // Keep note buttons in place so repeated clicks and keyboard focus work.
     renderSelection();
     renderTablature();
-    els.tablatureScroll.scrollLeft = els.tablatureScroll.scrollWidth;
-    scheduleFit();
-  }
-
-  function clearNotes() {
-    state.tabNotes = [];
-    state.harmonized = false;
-    setPresetMode("manual");
-    syncSelectionFromTab();
-    renderSelection();
-    renderTablature();
+    if (matchIndex === -1) {
+      els.tablatureScroll.scrollLeft = els.tablatureScroll.scrollWidth;
+    }
     scheduleFit();
   }
 
@@ -776,7 +784,6 @@
     corner.textContent = "String";
     header.appendChild(corner);
     var unavailableCount = 0;
-    var noteCount = 0;
 
     for (var index = 0; index < columnCount; index += 1) {
       var step = document.createElement("th");
@@ -784,7 +791,6 @@
       step.textContent = index < steps.length ? String(index + 1) : "";
       if (index < steps.length) {
         var notes = steps[index];
-        noteCount += notes.length;
         var unavailable = notes.filter(function (note, voiceIndex) {
           return !positions[index][voiceIndex];
         });
@@ -836,11 +842,7 @@
 
     els.tablature.replaceChildren(head, body);
     var count = state.tabNotes.length;
-    els.tabStatus.textContent = state.harmonized
-      ? count + (count === 1 ? " step" : " steps") + " / " + noteCount + (noteCount === 1 ? " note" : " notes") + " (harmony only)"
-      : count + (count === 1 ? " note" : " notes");
     els.undoNote.disabled = count === 0;
-    els.clearTab.disabled = count === 0;
     els.tabWarning.hidden = unavailableCount === 0;
     els.tabWarning.textContent = unavailableCount
       ? unavailableCount + (unavailableCount === 1 ? " note cannot" : " notes cannot") +
